@@ -22,12 +22,17 @@ import secrets
 
 import database  # noqa: F401  (loads .env into os.environ on import)
 import agent
+from database import init_db
 from action_gateway import gateway_mode, check_warden_connection
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+
+# Same startup as the Streamlit app (app.py): create tables + seed demo
+# data. Without this, /api/chat 500s with "no such table" on fresh disks.
+init_db()
 
 
 class ChatMsg(BaseModel):
