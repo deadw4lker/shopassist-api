@@ -1,0 +1,28 @@
+# Render Blueprint — ShopAssist Chat API (phone-app backend, free tier).
+# Deploy: push this folder as its own GitHub repo → Render → New → Blueprint.
+# WARDEN_API_KEY: after deploy, register shopassist_bot in the WARDEN console
+# (Connect → Register agent) and paste the issued key here (Dashboard → Environment).
+# APP_API_KEY: auto-generated — every phone enters it once in the app's
+# settings screen (it travels as a Bearer token; the WARDEN key never leaves the server).
+services:
+  - type: web
+    name: shopassist-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: WARDEN_BASE_URL
+        value: https://warden-backend.onrender.com
+      - key: WARDEN_AGENT_ID
+        value: shopassist_bot
+      - key: WARDEN_API_KEY
+        sync: false
+      - key: APP_API_KEY
+        generateValue: true
+      - key: LLM_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: LLM_MODEL
+        value: deepseek/deepseek-chat
+      - key: LLM_API_KEY
+        sync: false

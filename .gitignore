@@ -1,0 +1,17 @@
+# Secrets & local state — never commit
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Streamlit local config (theme only is safe, but keep local)
+.streamlit/
+
+# Logs
+*.log
