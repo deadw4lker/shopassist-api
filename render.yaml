@@ -13,7 +13,7 @@ services:
     plan: free
     envVars:
       - key: WARDEN_BASE_URL
-        value: https://remained-nut-physician-compare.trycloudflare.com
+        value: https://monica-modelling-abstract-diana.trycloudflare.com
       - key: WARDEN_AGENT_ID
         value: shopassist_bot
       - key: WARDEN_API_KEY
