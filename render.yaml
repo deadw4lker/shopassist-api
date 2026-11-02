@@ -15,7 +15,7 @@ services:
       - key: WARDEN_BASE_URL
         value: https://monica-modelling-abstract-diana.trycloudflare.com
       - key: WARDEN_AGENT_ID
-        value: agent
+        value: shopassist_bot
       - key: WARDEN_API_KEY
         sync: false
       - key: APP_API_KEY
