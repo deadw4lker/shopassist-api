@@ -5,6 +5,7 @@ Every inbound chat turn passes through pre_check() before the agent runs:
   * spam burst    -> > SPAM_MAX_MSGS messages in SPAM_WINDOW_S seconds
   * repeat flood  -> same text sent REPEAT_MAX times in a row
   * manipulation  -> prompt-injection / policy-override phrasing in user text
+                   (regex + Qwen3Guard LLM guard when enabled)
 
 post_check() runs after the turn: >= BULK_BLOCK_THRESHOLD governance BLOCKs
 in one turn (e.g. "refund every order") also triggers a block.
@@ -43,6 +44,12 @@ _INJECTION_RES = [
     re.compile(r"jailbreak|prompt\s+inject", re.IGNORECASE),
 ]
 
+# Qwen3Guard LLM guard configuration
+_QG_ENABLED = os.environ.get("QWEN3GUARD_ENABLED", "0").strip().lower() in ("1", "true", "yes", "on")
+_QG_API_URL = os.environ.get("QWEN3GUARD_API_URL", "").strip().rstrip("/")
+_QG_API_KEY = os.environ.get("QWEN3GUARD_API_KEY", "").strip()
+_QG_TIMEOUT = float(os.environ.get("QWEN3GUARD_TIMEOUT_S", "8"))
+
 
 def _int(name: str, default: int) -> int:
     try:
@@ -57,7 +64,46 @@ def _now() -> datetime:
 
 def _has_injection(text: str) -> bool:
     t = text or ""
-    return any(r.search(t) for r in _INJECTION_RES)
+    # 1. Fast regex pre-filter
+    if any(r.search(t) for r in _INJECTION_RES):
+        return True
+    # 2. Qwen3Guard LLM guard (when enabled)
+    if _QG_ENABLED and _qwen3guard_check(t):
+        return True
+    return False
+
+
+def _qwen3guard_check(text: str) -> bool:
+    """Call Qwen3Guard API to detect prompt injection / manipulation.
+    Returns True if the text is flagged as unsafe (should be blocked).
+    Fail-open: if the API is unreachable or errors, return False
+    and let the regex filter handle it."""
+    if not _QG_API_URL:
+        return False
+    try:
+        payload = json.dumps({
+            "text": text[:1000],
+            "check_type": "injection",
+        }).encode()
+        headers = {"Content-Type": "application/json"}
+        if _QG_API_KEY:
+            headers["Authorization"] = f"Bearer {_QG_API_KEY}"
+        req = urllib.request.Request(
+            f"{_QG_API_URL}/guard", data=payload, method="POST",
+            headers=headers)
+        with urllib.request.urlopen(req, timeout=_QG_TIMEOUT) as r:
+            body = json.loads(r.read().decode() or "{}")
+        decision = str(body.get("decision", "")).upper()
+        safe = body.get("safe", None)
+        if decision in ("BLOCK", "DENY", "REJECT", "UNSAFE"):
+            return True
+        if decision in ("ALLOW", "SAFE", "PASS"):
+            return False
+        if safe is not None:
+            return not bool(safe)
+        return True
+    except Exception:
+        return False
 
 
 def _get_block(conn, customer_id: str):
