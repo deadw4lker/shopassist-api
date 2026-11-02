@@ -13,7 +13,7 @@ services:
     plan: free
     envVars:
       - key: WARDEN_BASE_URL
-        value: https://warden-backend.onrender.com
+        value: https://remained-nut-physician-compare.trycloudflare.com
       - key: WARDEN_AGENT_ID
         value: shopassist_bot
       - key: WARDEN_API_KEY
