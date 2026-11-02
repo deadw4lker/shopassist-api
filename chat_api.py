@@ -111,7 +111,9 @@ def chat(req: ChatRequest, authorization: Optional[str] = Header(default=None)):
     customer_id = (req.customer_id or "CUST-01").strip() or "CUST-01"
     hist = [{"role": m.role, "content": m.content} for m in (req.history or [])][-10:]
 
-    result = agent.run_turn(customer_id, text, hist)
+    result = agent.run_turn(customer_id, text, hist,
+                            agent_id=os.environ.get("WARDEN_AGENT_ID", "shopassist_bot"),
+                            context={"source": "chat_api", "channel": "mobile_app"})
     return {
         "reply": result.get("reply", ""),
         "badges": _badges(result.get("trace", [])),

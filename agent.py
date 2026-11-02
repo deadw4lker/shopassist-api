@@ -273,11 +273,25 @@ def _describe_result(action: str, out: dict) -> str:
 
 
 def run_turn(customer_id: str, user_text: str, history: list[dict] | None = None,
-             correlation_id: str | None = None) -> dict:
-    """Process one user message. Returns {reply, trace, ...}."""
+             correlation_id: str | None = None,
+             agent_id: str = "shopassist_bot",
+             context: dict | None = None) -> dict:
+    """Process one user message. Returns {reply, trace, ...}.
+
+    Qwen3Guard L0 governance can override the decision:
+      - governance_override == "PENDING_APPROVAL" -> held for human review
+      - governance_override == "HUMAN_ONLY"       -> human execution required
+    """
     history = history or []
-    gate = abuse_guard.pre_check(customer_id, user_text)
+    context = context or {}
+    gate = abuse_guard.pre_check(customer_id, user_text, agent_id=agent_id, context=context)
     if gate:
+        if gate.get("governance_override"):
+            return {"reply": gate.get("reply") or f"⏳ {gate['reason']}",
+                    "trace": [], "actions_attempted": 0,
+                    "blocked": 0, "blocked_user": False,
+                    "block_reason": gate.get("reason", ""),
+                    "governance_override": gate["governance_override"]}
         return {"reply": gate["reply"], "trace": [],
                 "actions_attempted": 0,
                 "blocked": 0, "blocked_user": True,
@@ -338,7 +352,7 @@ def run_turn(customer_id: str, user_text: str, history: list[dict] | None = None
                                    "otherwise reply with the final-answer JSON."}]
 
     reply = "\n\n".join(parts)
-    abuse_notice = abuse_guard.post_check(customer_id, user_text, trace)
+    abuse_notice = abuse_guard.post_check(customer_id, user_text, trace, agent_id=agent_id)
     if abuse_notice:
         reply += "\n\n" + abuse_notice
     # Indirect-injection transparency: if any fetched order note carried an override, call it out
